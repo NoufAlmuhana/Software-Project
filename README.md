@@ -1,3 +1,3 @@
-Wisal Café – Smart Table Reservations
+Wisal Café – Smart Table Reservation Platform
 
-Wisal Café is an online platform that simplifies table reservations for gaming enthusiasts in cafés. It allows users to browse available tables, book in advance, and explore the menu digitally, ensuring a smooth and convenient experience. Additionally, it helps improve café efficiency and reduce operational costs, creating the perfect balance between entertainment and socializing.
+Wisal Café is an innovative online system that allows users to reserve tables in cafés designed for gaming enthusiasts. Users can browse available tables, book in advance, and explore the menu digitally, ensuring a smooth and convenient experience. The platform aims to enhance the customer experience and provide an ideal environment that combines entertainment and socializing.
