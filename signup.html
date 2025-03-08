@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(to right, #d7ccc8, #bcaaa4); /* Gradient background */
+        }
+        .container {
+            background-color: #3e2723; /* Dark brown */
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            position: relative;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #795548; /* Brown border */
+            border-radius: 5px;
+            background-color: #efebe9; /* Light brown for input */
+            color: #3e2723; /* Dark brown text */
+        }
+        button {
+            background-color: #795548; /* Brown button */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #6d4c41; /* Darker brown on hover */
+        }
+        .error {
+            color: red;
+            text-align: center;
+        }
+        .welcome-text {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #3e2723; /* Dark brown */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="welcome-text">Welcome to Wisal</div>
+    <h2>Sign Up</h2>
+    <form id="signupForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <input type="text" id="phone" placeholder="Phone Number" required>
+        <button type="submit">Sign Up</button>
+        <p id="message" class="error"></p>
+    </form>
+</div>
+
+<script>
+    document.getElementById('signupForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const phone = document.getElementById('phone').value;
+        const message = document.getElementById('message');
+
+        // Reset message
+        message.textContent = '';
+
+        // Validate inputs
+        if (!username || username.length < 3) {
+            message.textContent = 'Invalid username. Must be at least 3 characters.';
+            return;
+        }
+        if (!password || password.length < 8) {
+            message.textContent = 'Invalid password. Must be more than 8 characters.';
+            return;
+        }
+        if (!/^\d{10}$/.test(phone)) {
+            message.textContent = 'Invalid phone number. Must be 10 digits.';
+            return;
+        }
+
+        // Simulate successful account creation and redirect
+        message.textContent = 'Account created successfully!';
+        message.style.color = 'green';
+        
+        // Redirect to index.html after a short delay
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 1500); // 1.5 seconds delay
+    });
+</script>
+
+</body>
+</html>

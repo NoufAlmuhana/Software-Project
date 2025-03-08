@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/style.css" rel="stylesheet">
+    <title>Loyalty Program</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 60px auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+        .container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        }
+        h1 {
+            color: #5d3f2a;
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 4px solid #e67e22;
+        }
+        p {
+            font-size: 18px;
+            color: #495057;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #loyaltyPoints {
+            color: #fff;
+            font-weight: bold;
+            font-size: 28px;
+            background: linear-gradient(to right, #e67e22, #f8a424);
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        h3 {
+            font-size: 28px;
+            margin: 30px 0 15px;
+            color: #5d3f2a;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        th {
+            background-color: #5d3f2a;
+            color: white;
+            font-weight: 600;
+        }
+        td {
+            background-color: #f9f9f9;
+            transition: background-color 0.3s;
+        }
+        tr:hover td {
+            background-color: #eaeaea;
+        }
+        .fixed-text {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(60, 60, 60, 0.9);
+            color: white;
+            padding: 12px 25px;
+            font-size: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+		
+		.header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+background-color: #493E32;
+padding: 15px 30px;
+color: white;
+}
+.header .logo{
+margin-left: 8%;
+}
+.header .text {
+color: #C5A478;
+margin-left: 5px;
+}
+.header .nav-menu a {
+color: #ccc;
+text-decoration: none;
+margin: 0 15px;
+position: relative;
+}
+.nav-menu a.active,
+.nav-menu a:hover {
+color: white;
+font-weight: bold;
+}
+.nav-menu a.active::after,
+.nav-menu a:hover::after {
+content: "";
+display: block;
+width: 100%;
+height: 2px;
+background-color: #C5A478;
+position: absolute;
+bottom: -5px;
+left: 0;
+}
+.icons{
+width: 20%;
+}
+.icons i {
+margin-left: 15px;
+font-size: 18px;
+cursor: pointer;
+}
+.icons a{
+padding: 10px;
+}
+.icons svg{
+width: 10%;
+}
+.icons svg path{
+fill: white
+}
+
+        footer {
+background-color: #382904;
+color: white;
+padding: 40px 20px;
+text-align: center;
+}
+.footer-container {
+display: flex;
+justify-content: space-around;
+flex-wrap: wrap;
+}
+.footer-section {
+margin: 20px;
+flex: 1;
+min-width: 200px;
+}
+.footer-section h3 {
+border-bottom: 2px solid #f9d7a1;
+padding-bottom: 10px;
+}
+.footer-section a {
+color: white;
+text-decoration: none;
+display: block;
+margin: 5px 0;
+transition: color 0.3s;
+}
+.footer-section a:hover {
+color: #f3ddb9;
+}
+.social-icons {
+margin: 10px 0;
+}
+.social-icons a {
+margin: 0 10px;
+}
+.contact-info {
+font-size: 0.9em;
+}
+.copyright {
+margin-top: 20px;
+font-size: 0.8em;
+}
+    </style>
+</head>
+<header class="header">
+    <div class="logo">
+    <img src="images/logo copy.jpg" alt="logo" style="width: 100px;">
+    </div>
+    <nav class="nav-menu">
+    <a href="index.html">Home</a>
+    <a href="Gameorder.html">Game And Ordering</a>
+    <a href="cafefood.html" class="active">Cafe And Food</a>
+    <a href="Loyalty.html">Loyalty Program</a>
+    </nav>
+    <div class="icons">
+    <a href="#" onclick="confirmLogout()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="30" height="30" fill="currentColor">
+    <path d="M497.9 273L353.9 417c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9L434.1 272 320 159.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L497.9 239c9.4 9.4 9.4 24.6 0 34zM160 32h64c13.3 0 24-10.7 24-24S237.3 0 224 0h-64C71.6 0 0 71.6 0 160v192c0 88.4 71.6 160 160 160h64c13.3 0 24-10.7 24-24s-10.7-24-24-24h-64c-61.9 0-112-50.1-112-112V160c0-61.9 50.1-112 112-112z"/>
+    </svg>
+    </a>
+    
+    <script>
+    function confirmLogout() {
+    let confirmAction = confirm("Are you sure you want to log out?");
+    if (confirmAction) {
+    window.location.href = "Main.html";
+    }
+    }
+    </script>
+    <a href="cart.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" style="width: 11%;"><path d="M0 24C0 10.7 10.7 0 24 0L69.5 0c22 0 41.5 12.8 50.6 32l411 0c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3l-288.5 0 5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5L488 336c13.3 0 24 10.7 24 24s-10.7 24-24 24l-288.3 0c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5L24 48C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"/></svg></a>
+    </div></a>
+    
+    </header>
+  
+  
+<body>
+    <div class="fixed-text">Get 1 point for every 2 SAR</div>
+    <div class="container">
+        <h1>Loyalty Points</h1>
+        <p>Earn points with every order and reservation and redeem them for discounts!</p>
+        <p id="loyaltyPoints">Your Points: 50</p>
+        <h3>Points Values</h3>
+        <table>
+            <tr><th>Money spent (SAR)</th><th>Earned points</th></tr>
+            <tr><td>2 SAR</td><td>1</td></tr>
+            <tr><td>50 SAR</td><td>25</td></tr>
+            <tr><td>100 SAR</td><td>50</td></tr>
+        </table>
+		<p style="font-size: 0.8em;">you can reedem your points with discounts from our order pages if you have 50 points reedem them for 50 riyals</p>
+    </div>
+
+    <script>
+    if (localStorage.getItem("loyaltyPoints") === null) {
+        localStorage.setItem("loyaltyPoints", "50");
+    }
+
+    function updateLoyaltyPoints() {
+        let userPoints = parseInt(localStorage.getItem("loyaltyPoints")) || 0;
+        document.getElementById("loyaltyPoints").innerText = `Your Points: ${userPoints}`;
+    }
+
+    function addPoints(amountSpent) {
+        let userPoints = parseInt(localStorage.getItem("loyaltyPoints")) || 0;
+        let earnedPoints = Math.floor(amountSpent / 0.5); 
+        userPoints += earnedPoints;
+        localStorage.setItem("loyaltyPoints", userPoints);
+        updateLoyaltyPoints();
+    }
+
+    function redeemPoints() {
+        let userPoints = parseInt(localStorage.getItem("loyaltyPoints")) || 0;
+        let discount = Math.min(userPoints * 0.5, 50); 
+        let remainingPoints = userPoints - Math.floor(discount / 0.5);
+        
+        localStorage.setItem("loyaltyPoints", remainingPoints);
+        updateLoyaltyPoints();
+        alert(`You redeemed ${Math.floor(discount / 0.5)} points for a discount of ${discount} SAR!`);
+    }
+
+    window.onload = updateLoyaltyPoints;
+	
+	
+
+</script>
+
+
+
+   <footer>
+        <div class="footer-container">
+        <div class="footer-section">
+        <h3>Quick Links</h3>
+        <a href="index.html">Home</a>
+        <a href="Gameorder.html">Game And Ordering</a>
+        <a href="cafefood.html">Cafe And food</a>
+        <a href="Regster.html">ٍRegister Page</a>
+        <a href="Loyalty.html">Loyalty</a>
+        </div>
+        
+        <div class="footer-section">
+        <h3>Follow Us</h3>
+        <div class="social-icons">
+        <a href="#">Facebook</a>
+        <a href="#">Twitter</a>
+        <a href="#">Instagram</a>
+        <a href="#">LinkedIn</a>
+        </div>
+        </div>
+        <div class="footer-section">
+        <h3>Contact Info</h3>
+        <p class="contact-info">Phone: 123-456-7890</p>
+        <p class="contact-info">Email: info@example.com</p>
+        <p class="contact-info">Address: 123 Main St, City, Country</p>
+        </div>
+        </div>
+        <div class="copyright">
+        <p>©️ 2023 All Rights Reserved.</p>
+        </div>
+        </footer>
+</body>
+</html>
+
+
+
