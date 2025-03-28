@@ -1,3 +1,143 @@
+<?php
+session_start();
+$host = 'localhost';
+$username = 'root'; 
+$password = 'root'; 
+$dbname = 'wisaldb';
+
+$conn = new mysqli($host, $username, $password, $dbname, 8889);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+if (!isset($_SESSION['userID'])) {
+    die("Access denied. Please log in first.");
+}
+
+$userID = $_SESSION['userID'];
+
+// Save or Update Reservation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save') {
+    $numOfPeople = $_POST['numPeople'];
+    $date = $_POST['date'];
+    $time = $_POST['time'];
+    $status = 'Pending';
+    $id = $_POST['id'] ?? null;
+
+    $startTimeRaw = explode('-', $time)[0];
+    $meridiem = trim(substr($time, -2));
+    $startTimeFormatted = date('H:i:s', strtotime("$startTimeRaw $meridiem"));
+    $datetime = date('Y-m-d H:i:s', strtotime("$date $startTimeFormatted"));
+
+    if (strtotime($datetime) < strtotime(date('Y-m-d H:i:s'))) {
+        echo json_encode(['success' => false, 'message' => 'You cannot reserve a past date or time.']);
+        exit;
+    }
+
+    $checkSQL = $id
+        ? "SELECT COUNT(*) as count FROM reservation WHERE date = ? AND reservationID != ?"
+        : "SELECT COUNT(*) as count FROM reservation WHERE date = ?";
+    $checkStmt = $conn->prepare($checkSQL);
+    $id ? $checkStmt->bind_param("si", $datetime, $id) : $checkStmt->bind_param("s", $datetime);
+    $checkStmt->execute();
+    $res = $checkStmt->get_result()->fetch_assoc();
+    if ($res['count'] > 0) {
+        echo json_encode(['success' => false, 'message' => 'This date and time are already reserved.']);
+        exit;
+    }
+
+    // Get available table
+    $tableStmt = $conn->prepare("SELECT tableID FROM tables WHERE isAvailable = 1 AND capacity >= ? ORDER BY capacity ASC LIMIT 1");
+    $tableStmt->bind_param("i", $numOfPeople);
+    $tableStmt->execute();
+    $tableResult = $tableStmt->get_result();
+    if ($tableResult->num_rows === 0) {
+        echo json_encode(['success' => false, 'message' => 'No available table fits the number of guests.']);
+        exit;
+    }
+    $tableID = $tableResult->fetch_assoc()['tableID'];
+
+    // If updating, free old table
+    if ($id) {
+        $oldTable = $conn->query("SELECT tableID FROM reservation WHERE reservationID = $id AND userID = $userID")->fetch_assoc()['tableID'] ?? null;
+        if ($oldTable) {
+            $conn->query("UPDATE tables SET status='Available', isAvailable=1 WHERE tableID = $oldTable");
+        }
+
+        $stmt = $conn->prepare("UPDATE reservation SET numOfPeople=?, date=?, status=?, tableID=?, userID=? WHERE reservationID=? AND userID=?");
+        $stmt->bind_param("issiiii", $numOfPeople, $datetime, $status, $tableID, $userID, $id, $userID);
+    } else {
+        $stmt = $conn->prepare("INSERT INTO reservation (numOfPeople, date, status, tableID, userID) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("issii", $numOfPeople, $datetime, $status, $tableID, $userID);
+    }
+
+    if ($stmt->execute()) {
+        $conn->query("UPDATE tables SET status='Reserved', isAvailable=0 WHERE tableID = $tableID");
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
+}
+
+// Delete Reservation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+    $id = $_POST['id'];
+    $tableRow = $conn->query("SELECT tableID FROM reservation WHERE reservationID = $id AND userID = $userID")->fetch_assoc();
+    if ($tableRow) {
+        $tableID = $tableRow['tableID'];
+        $stmt = $conn->prepare("DELETE FROM reservation WHERE reservationID = ? AND userID = ?");
+        $stmt->bind_param("ii", $id, $userID);
+        if ($stmt->execute()) {
+            $conn->query("UPDATE tables SET status='Available', isAvailable=1 WHERE tableID = $tableID");
+        }
+    }
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Fetch Reservations
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'fetch') {
+    $reservations = [];
+    $sql = "SELECT reservationID, numOfPeople, DATE_FORMAT(date, '%Y-%m-%d') as resDate, DATE_FORMAT(date, '%h-%i %p') as resTime FROM reservation WHERE userID = ? ORDER BY date";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userID);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $reservations[] = $row;
+    }
+    echo json_encode($reservations);
+    exit;
+}
+
+// Search Available Tables
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'search') {
+    $date = $_POST['searchDate'];
+    $time = $_POST['searchTime'];
+
+    $startTimeRaw = explode('-', $time)[0];
+    $meridiem = trim(substr($time, -2));
+    $startTimeFormatted = date('H:i:s', strtotime("$startTimeRaw $meridiem"));
+    $datetime = date('Y-m-d H:i:s', strtotime("$date $startTimeFormatted"));
+
+    $sql = "SELECT * FROM tables WHERE isAvailable = 1 AND tableID NOT IN (
+        SELECT tableID FROM reservation WHERE date = ?
+    )";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $datetime);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $availableTables = [];
+    while ($row = $result->fetch_assoc()) {
+        $availableTables[] = $row;
+    }
+    echo json_encode($availableTables);
+    exit;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -220,170 +360,53 @@ footer {
 
     </header>
 
+<div class="container">
 
-    <div class="container">
-        <h1>Table Reservation</h1>
-        <form id="reservationForm" data-editing="false" data-reservation-index="">
-            <label for="numPeople">Number of Guests:</label>
-            <input type="number" id="numPeople" name="numPeople" required min="1">
+  <!-- 🔍 Search -->
+  <div class="search-section">
+    <form id="searchForm">
+      <label>Search Available Tables:</label>
+      <input type="date" id="searchDate" required />
+      <select id="searchTime" required>
+        <option value="">Select Time</option>
+        <option>3-4 PM</option><option>4-5 PM</option><option>5-6 PM</option>
+        <option>6-7 PM</option><option>7-8 PM</option><option>8-9 PM</option>
+        <option>9-10 PM</option><option>10-11 PM</option>
+      </select>
+      <button type="submit">Search</button>
+    </form>
+    <div id="searchResults" class="search-result"></div>
+  </div>
 
-            <label for="date">Select Date:</label>
-            <input type="date" id="date" name="date" required>
-
-            <label for="time">Select Time:</label>
-            <div class="time-slot" id="timeSlots">
-                <button type="button" onclick="selectTime(this)">3-4 PM</button>
-                <button type="button" onclick="selectTime(this)">4-5 PM</button>
-                <button type="button" onclick="selectTime(this)">5-6 PM</button>
-                <button type="button" onclick="selectTime(this)">6-7 PM</button>
-                <button type="button" onclick="selectTime(this)">7-8 PM</button>
-                <button type="button" onclick="selectTime(this)">8-9 PM</button>
-                <button type="button" onclick="selectTime(this)">9-10 PM</button>
-                <button type="button" onclick="selectTime(this)">10-11 PM</button>
-            </div>
-
-            <button type="submit">Confirm Reservation</button>
-            <div class="message" id="errorMessage"></div>
-        </form>
-
-        <div class="reservation-list" id="reservationList"></div>
+  <!-- 📋 Reservation Form -->
+  <h1>Table Reservation</h1>
+  <form id="reservationForm">
+    <input type="hidden" id="resID" />
+    <label for="numPeople">Number of Guests:</label>
+    <input type="number" id="numPeople" required min="1" max="10" />
+    <label for="date">Select Date:</label>
+    <input type="date" id="date" required />
+    <label for="time">Select Time:</label>
+    <div class="time-slot">
+      <button type="button" onclick="selectTime(this)">3-4 PM</button>
+      <button type="button" onclick="selectTime(this)">4-5 PM</button>
+      <button type="button" onclick="selectTime(this)">5-6 PM</button>
+      <button type="button" onclick="selectTime(this)">6-7 PM</button>
+      <button type="button" onclick="selectTime(this)">7-8 PM</button>
+      <button type="button" onclick="selectTime(this)">8-9 PM</button>
+      <button type="button" onclick="selectTime(this)">9-10 PM</button>
+      <button type="button" onclick="selectTime(this)">10-11 PM</button>
     </div>
+    <input type="hidden" id="time" />
+    <button type="submit">Confirm Reservation</button>
+    <div class="message" id="errorMessage"></div>
+  </form>
 
-   <script>
-    let reservations = []; // This will later be fetched from the backend
-
-    document.getElementById('timeSlots').addEventListener('click', function (event) {
-        if (event.target.tagName === 'BUTTON') {
-            document.querySelectorAll('.time-slot button').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-    });
-
-    document.getElementById('reservationForm').addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        const numPeople = document.getElementById('numPeople').value;
-        const date = document.getElementById('date').value;
-        const time = getSelectedTime();
-
-        if (!numPeople || !date || !time) {
-            showMessage('All fields are required.', 'red');
-            return;
-        }
-
-        // Prevent reserving old dates
-        const today = new Date().toISOString().split('T')[0];
-        if (date < today) {
-            showMessage('You cannot reserve for a past date.', 'red');
-            return;
-        }
-
-        const isEditing = this.dataset.editing === 'true';
-        const existingIndex = parseInt(this.dataset.reservationIndex, 10);
-
-        if (isEditing) {
-            const existingReservation = reservations[existingIndex];
-            if (existingReservation.time !== time || existingReservation.date !== date) {
-                const isReserved = reservations.some((res, i) => res.date === date && res.time === time && i !== existingIndex);
-                if (isReserved) {
-                    showMessage('This time is already reserved. Please choose another time.', 'red');
-                    return;
-                }
-            }
-            reservations[existingIndex] = { numPeople, date, time };
-        } else {
-            const isReserved = reservations.some(res => res.date === date && res.time === time);
-            if (isReserved) {
-                showMessage('This time is already reserved. Please choose another time.', 'red');
-                return;
-            }
-            reservations.push({ numPeople, date, time });
-        }
-
-        showMessage('Reservation successful!', 'green');
-        displayReservations();
-        this.reset();
-        this.dataset.editing = false;
-        delete this.dataset.reservationIndex;
-    });
-
-    function getSelectedTime() {
-        const selectedButton = document.querySelector('.time-slot button.active');
-        return selectedButton ? selectedButton.textContent : null;
-    }
-
-    function showMessage(message, color = 'red') {
-        const errorMessage = document.getElementById('errorMessage');
-        errorMessage.textContent = message;
-        errorMessage.style.color = color;
-        setTimeout(() => { errorMessage.textContent = ''; }, 3000);
-    }
-
-    function displayReservations() {
-        const list = document.getElementById('reservationList');
-        list.innerHTML = '';
-        reservations.forEach((res, index) => {
-            const reservationDiv = document.createElement('div');
-            reservationDiv.innerHTML = `
-                <strong>Reservation ${index + 1}:</strong> ${res.numPeople} guests on ${res.date} at ${res.time} 
-                <button onclick="editReservation(${index})">Edit</button>
-                <button onclick="deleteReservation(${index})">Cancel</button>
-            `;
-            list.appendChild(reservationDiv);
-        });
-    }
-
-    function editReservation(index) {
-        const res = reservations[index];
-        document.getElementById('numPeople').value = res.numPeople;
-        document.getElementById('date').value = res.date;
-
-        document.querySelectorAll('.time-slot button').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.textContent === res.time) {
-                btn.classList.add('active');
-            }
-        });
-
-        const form = document.getElementById('reservationForm');
-        form.dataset.editing = 'true';
-        form.dataset.reservationIndex = index;
-    }
-
-    function deleteReservation(index) {
-        if (confirm('Are you sure you want to cancel this reservation?')) {
-            reservations.splice(index, 1);
-            displayReservations();
-        }
-    }
-
-    // Search functionality for available tables
-    document.getElementById('searchButton')?.addEventListener('click', function() {
-        const searchDate = document.getElementById('searchDate').value;
-        const searchTime = document.getElementById('searchTime').value;
-        
-        if (!searchDate || !searchTime) {
-            showMessage('Please enter a date and time to search.', 'red');
-            return;
-        }
-
-        const availableTimes = ['3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'];
-        const reservedTimes = reservations.filter(res => res.date === searchDate).map(res => res.time);
-        
-        const availableSlots = availableTimes.filter(time => !reservedTimes.includes(time));
-        
-        const searchResults = document.getElementById('searchResults');
-        searchResults.innerHTML = '';
-        
-        if (availableSlots.length > 0) {
-            searchResults.innerHTML = `<strong>Available Times:</strong> ${availableSlots.join(', ')}`;
-        } else {
-            searchResults.innerHTML = '<strong>No available tables for the selected time.</strong>';
-        }
-    });
-</script>
-
-
+  <!-- 📄 Reservations -->
+  <div class="reservation-list" id="reservationList">
+    <h3>Current Reservations:</h3>
+  </div>
+</div>
 <footer>
                         <div class="footer-container">
                                 <div class="footer-section">
@@ -415,5 +438,133 @@ footer {
                                 <p>©️ 2023 All Rights Reserved.</p>
                         </div>
                 </footer>
+
+<script>
+function selectTime(button) {
+  document.querySelectorAll('.time-slot button').forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+  document.getElementById('time').value = button.textContent;
+}
+
+function getSelectedTime() {
+  const btn = document.querySelector('.time-slot button.active');
+  return btn ? btn.textContent : null;
+}
+
+function showMessage(msg, color = 'red') {
+  const msgBox = document.getElementById('errorMessage');
+  msgBox.textContent = msg;
+  msgBox.style.color = color;
+  setTimeout(() => msgBox.textContent = '', 3000);
+}
+
+document.getElementById('reservationForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const formData = new URLSearchParams();
+  formData.append('numPeople', document.getElementById('numPeople').value);
+  formData.append('date', document.getElementById('date').value);
+  formData.append('time', getSelectedTime());
+  formData.append('action', 'save');
+  const id = document.getElementById('resID').value;
+  if (id) formData.append('id', id);
+
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showMessage('Reservation saved!', 'green');
+      document.getElementById('reservationForm').reset();
+      document.getElementById('resID').value = '';
+      document.querySelectorAll('.time-slot button').forEach(btn => btn.classList.remove('active'));
+      fetchReservations();
+    } else {
+      showMessage(data.message || 'Something went wrong.');
+    }
+  });
+});
+
+function fetchReservations() {
+  fetch(window.location.href + '?action=fetch')
+    .then(res => res.json())
+    .then(data => {
+      const list = document.getElementById('reservationList');
+      list.innerHTML = '<h3>Current Reservations:</h3>';
+      data.forEach(res => {
+        list.innerHTML += `
+          <div>
+            <strong>${res.numOfPeople} guests</strong> on ${res.resDate} at ${res.resTime}
+            <button onclick="editReservation('${res.reservationID}', '${res.numOfPeople}', '${res.resDate}', '${res.resTime}')">Edit</button>
+            <button onclick="deleteReservation('${res.reservationID}')">Delete</button>
+          </div>`;
+      });
+    });
+}
+
+function editReservation(id, people, date, time) {
+  document.getElementById('resID').value = id;
+  document.getElementById('numPeople').value = people;
+  document.getElementById('date').value = date;
+  document.querySelectorAll('.time-slot button').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent === time) {
+      btn.classList.add('active');
+      document.getElementById('time').value = time;
+    }
+  });
+}
+
+function deleteReservation(id) {
+  if (!confirm('Delete this reservation?')) return;
+  const formData = new URLSearchParams();
+  formData.append('id', id);
+  formData.append('action', 'delete');
+
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showMessage('Deleted!', 'green');
+      fetchReservations();
+    } else {
+      showMessage(data.message || 'Failed to delete.');
+    }
+  });
+}
+
+// 🔍 Search
+document.getElementById('searchForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const formData = new URLSearchParams();
+  formData.append('action', 'search');
+  formData.append('searchDate', document.getElementById('searchDate').value);
+  formData.append('searchTime', document.getElementById('searchTime').value);
+
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    const resultDiv = document.getElementById('searchResults');
+    if (data.length === 0) {
+      resultDiv.innerHTML = "<p>No available tables found.</p>";
+    } else {
+      resultDiv.innerHTML = "<strong>Available Tables:</strong><ul>" +
+        data.map(t => `<li>Table #${t.tableID} (Seats ${t.capacity})</li>`).join('') + "</ul>";
+    }
+  });
+});
+
+window.onload = fetchReservations;
+</script>
 </body>
 </html>
