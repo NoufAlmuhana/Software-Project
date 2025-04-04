@@ -1,5 +1,5 @@
 <?php
-session_start(); // بدء الجلسة
+session_start(); 
 
 
 $host = "localhost"; 
