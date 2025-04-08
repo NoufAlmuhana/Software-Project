@@ -1,54 +1,63 @@
 <?php
-session_start(); 
+session_start();
 
+// إعداد الاتصال بقاعدة البيانات
+$host = "localhost";
+$user = "root";
+$pass = "root";
+$dbname = "wisaldb";
 
-$host = "localhost"; 
-$user = "root"; 
-$password = "root"; 
-$database = "wisaldb"; 
+$conn = new mysqli($host, $user, $pass, $dbname);
 
-$conn = new mysqli($host, $user, $password, $database);
-
+// التحقق من الاتصال
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
 $message = "";
 
+// تنفيذ التحقق فقط إذا تم إرسال النموذج
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    $phone = $_POST['phone'];
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
 
-  
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    if (!empty($username) && !empty($password)) {
+        $stmt = $conn->prepare("SELECT username, password FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->store_result();
 
+        if ($stmt->num_rows > 0) {
+            $stmt->bind_result($db_username, $db_password);
+            $stmt->fetch();
+            // إضافة طباعة للتصحيح
+            error_log("DB Username: " . $db_username);
+            error_log("DB Password: " . $db_password);
+            if (password_verify($password, $db_password)) {
+                $_SESSION['username'] = $db_username;
+                header("Location: index.html");
+                exit();
+            } else {
+                $message = "❌ Incorrect username or password!";
+            }
+        } else {
+            $message = "❌ Incorrect username or password!";
+        }
 
-    $sql = "INSERT INTO users (userName, PASSWORD, phone) VALUES ('$username', '$hashed_password', '$phone')";
-
-    if ($conn->query($sql) === TRUE) {
-    
-        $userID = $conn->insert_id;
-
-       
-        $_SESSION['userID'] = $userID;
-        $_SESSION['userName'] = $username;
-
-      
-        header("Location: index.html");
-        exit();
+        $stmt->close();
     } else {
-        $message = "Error: " . $conn->error;
+        $message = "❌ Please fill in all fields!";
     }
 }
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up</title>
+    <title>Log In</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -97,10 +106,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: red;
             text-align: center;
         }
-        .success {
-            color: green;
-            text-align: center;
-        }
         .welcome-text {
             position: absolute;
             top: 20px;
@@ -109,22 +114,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-weight: bold;
             color: #3e2723;
         }
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #efebe9;
+        }
+        .signup-link a {
+            color: #fff4d1;
+            text-decoration: none;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="welcome-text">Welcome to Wisal</div>
-    <h2>Sign Up</h2>
-    <form action="" method="POST">
+    <h2>Log In</h2>
+    <form method="POST" action="">
         <input type="text" name="username" placeholder="Username" required>
         <input type="password" name="password" placeholder="Password" required>
-        <input type="text" name="phone" placeholder="Phone Number" required>
-        <button type="submit">Sign Up</button>
+        <button type="submit">Log In</button>
         <?php if (!empty($message)): ?>
-            <p class="<?= strpos($message, 'successfully') !== false ? 'success' : 'error' ?>"><?= $message ?></p>
+            <p class="error"><?= htmlspecialchars($message) ?></p>
         <?php endif; ?>
     </form>
+    <div class="signup-link">
+        <p>If you don't have an account, <a href="signup.php">Sign up</a>.</p>
+    </div>
 </div>
 
 </body>
